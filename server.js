@@ -18,24 +18,60 @@ if (!SECRET_KEY || !PUBLIC_KEY || !PROCESSING_CHANNEL_ID) {
   process.exit(1);
 }
 
-const PRODUCTS = [
+const MARKETS = {
+  HK: {
+    country: "HK",
+    currency: "HKD",
+    locale: "en-HK",
+    phoneCountryCode: "+852",
+    paymentMethods: ["card", "applepay", "googlepay"],
+  },
+  NL: {
+    country: "NL",
+    currency: "EUR",
+    locale: "nl-NL",
+    phoneCountryCode: "+31",
+    paymentMethods: ["card", "applepay", "googlepay"],
+  },
+};
+
+const CATALOG = [
   {
     id: "product_1",
     name: "Good morning",
-    unitPrice: 15900,
     quantity: 1,
-    currency: "HKD",
     image: "/product_1.jpeg",
+    prices: { HK: 15900, NL: 1800 },
   },
   {
     id: "product_2",
     name: "Goodbye",
-    unitPrice: 15900,
     quantity: 1,
-    currency: "HKD",
     image: "/product_2.jpg",
+    prices: { HK: 15900, NL: 1800 },
   },
 ];
+
+function resolveMarket(country) {
+  return country === "NL" ? MARKETS.NL : MARKETS.HK;
+}
+
+function productsForMarket(country) {
+  const market = resolveMarket(country);
+  const priceKey = market.country;
+  return CATALOG.map((item) => ({
+    id: item.id,
+    name: item.name,
+    quantity: item.quantity,
+    image: item.image,
+    unitPrice: item.prices[priceKey],
+    currency: market.currency,
+  }));
+}
+
+function orderTotal(products) {
+  return products.reduce((sum, p) => sum + p.unitPrice * p.quantity, 0);
+}
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
@@ -44,14 +80,15 @@ app.get("/api/config", (_req, res) => {
   res.json({ publicKey: PUBLIC_KEY });
 });
 
-app.get("/api/products", (_req, res) => {
+app.get("/api/products", (req, res) => {
+  const market = resolveMarket(req.query.country);
+  const products = productsForMarket(market.country);
   res.json({
-    products: PRODUCTS,
-    totalAmount: PRODUCTS.reduce(
-      (sum, p) => sum + p.unitPrice * p.quantity,
-      0,
-    ),
-    currency: "HKD",
+    country: market.country,
+    currency: market.currency,
+    locale: market.locale,
+    products,
+    totalAmount: orderTotal(products),
   });
 });
 
@@ -67,6 +104,13 @@ app.post("/create-payment-sessions", async (req, res) => {
     country = "HK",
   } = req.body || {};
 
+  if (country !== "HK" && country !== "NL") {
+    return res.status(400).json({
+      error: "invalid_request",
+      message: "Country must be HK or NL.",
+    });
+  }
+
   if (!name?.trim() || !email?.trim() || !addressLine1?.trim() || !city?.trim()) {
     return res.status(400).json({
       error: "invalid_request",
@@ -74,22 +118,21 @@ app.post("/create-payment-sessions", async (req, res) => {
     });
   }
 
-  const totalAmount = PRODUCTS.reduce(
-    (sum, p) => sum + p.unitPrice * p.quantity,
-    0,
-  );
+  const market = resolveMarket(country);
+  const products = productsForMarket(country);
+  const totalAmount = orderTotal(products);
 
   const phoneDigits = (phone || "").replace(/\D/g, "");
-  const countryCode = country === "NL" ? "+31" : "+852";
 
   const sessionBody = {
     amount: totalAmount,
-    currency: "HKD",
+    currency: market.currency,
+    locale: market.locale,
     processing_channel_id: PROCESSING_CHANNEL_ID,
     reference: `ORD-${Date.now()}`,
     description: "iPhone cases — Good morning & Goodbye",
     display_name: "Case Co.",
-    enabled_payment_methods: ["card", "applepay","googlepay"],
+    enabled_payment_methods: market.paymentMethods,
     billing_descriptor: {
       name: "Case Co.",
       city: city.trim(),
@@ -103,10 +146,13 @@ app.post("/create-payment-sessions", async (req, res) => {
         address_line1: addressLine1.trim(),
         address_line2: addressLine2?.trim() || undefined,
         city: city.trim(),
-        country,
+        country: market.country,
       },
       phone: phoneDigits
-        ? { number: phoneDigits, country_code: countryCode }
+        ? {
+            number: phoneDigits,
+            country_code: market.phoneCountryCode,
+          }
         : undefined,
     },
     billing: {
@@ -114,22 +160,26 @@ app.post("/create-payment-sessions", async (req, res) => {
         address_line1: addressLine1.trim(),
         address_line2: addressLine2?.trim() || undefined,
         city: city.trim(),
-        country,
+        country: market.country,
       },
       phone: phoneDigits
-        ? { number: phoneDigits, country_code: countryCode }
+        ? {
+            number: phoneDigits,
+            country_code: market.phoneCountryCode,
+          }
         : undefined,
     },
     success_url: `${baseUrl}/?status=succeeded`,
     failure_url: `${baseUrl}/?status=failed`,
-    items: PRODUCTS.map((p) => ({
+    items: products.map((p) => ({
       name: p.name,
       quantity: p.quantity,
       unit_price: p.unitPrice,
       image_url: `${baseUrl}${p.image}`,
     })),
     metadata: {
-      products: PRODUCTS.map((p) => p.id).join(","),
+      products: products.map((p) => p.id).join(","),
+      market: market.country,
     },
   };
 

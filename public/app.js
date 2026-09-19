@@ -7,12 +7,17 @@ const publicKeyPromise = fetch("/api/config")
   })
   .then((config) => config.publicKey);
 
-const formatter = new Intl.NumberFormat("en-HK", {
+const PHONE_PLACEHOLDERS = {
+  HK: "+852 9123 4567",
+  NL: "+31 6 12345678",
+};
+
+let flowComponent = null;
+let currentMarket = { country: "HK", locale: "en-HK", currency: "HKD" };
+let priceFormatter = new Intl.NumberFormat("en-HK", {
   style: "currency",
   currency: "HKD",
 });
-
-let flowComponent = null;
 
 function triggerToast(id) {
   const element = document.getElementById(id);
@@ -23,6 +28,36 @@ function triggerToast(id) {
 function showError(el, message) {
   el.textContent = message;
   el.hidden = !message;
+}
+
+function applyMarket(market) {
+  currentMarket = {
+    country: market.country,
+    locale: market.locale,
+    currency: market.currency,
+  };
+  document.documentElement.lang = market.locale;
+  priceFormatter = new Intl.NumberFormat(market.locale, {
+    style: "currency",
+    currency: market.currency,
+  });
+}
+
+function resetPaymentSection() {
+  document.getElementById("payment-section").hidden = true;
+  showError(document.getElementById("session-error"), "");
+  if (flowComponent) {
+    flowComponent.unmount();
+    flowComponent = null;
+  }
+  document.getElementById("flow-container").replaceChildren();
+}
+
+function updatePhonePlaceholder(country) {
+  const phoneInput = document.getElementById("phone-input");
+  if (phoneInput) {
+    phoneInput.placeholder = PHONE_PLACEHOLDERS[country] || PHONE_PLACEHOLDERS.HK;
+  }
 }
 
 /**
@@ -62,9 +97,18 @@ async function showPaymentSuccess(paymentId) {
   }
 }
 
-async function loadProducts() {
-  const response = await fetch("/api/products");
+async function loadProducts(country) {
+  const response = await fetch(
+    `/api/products?country=${encodeURIComponent(country)}`,
+  );
   const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Could not load products");
+  }
+
+  applyMarket(data);
+  updatePhonePlaceholder(data.country);
+
   const list = document.getElementById("product-list");
   const totalEl = document.getElementById("order-total");
 
@@ -76,13 +120,13 @@ async function loadProducts() {
       <div class="product-card__info">
         <span class="product-card__name">${p.name}</span>
         <span class="product-card__meta">Qty ${p.quantity}</span>
-        <span class="product-card__price">${formatter.format(p.unitPrice / 100)}</span>
+        <span class="product-card__price">${priceFormatter.format(p.unitPrice / 100)}</span>
       </div>
     </li>`,
     )
     .join("");
 
-  totalEl.textContent = formatter.format(data.totalAmount / 100);
+  totalEl.textContent = priceFormatter.format(data.totalAmount / 100);
 }
 
 async function mountFlow(paymentSession) {
@@ -90,7 +134,7 @@ async function mountFlow(paymentSession) {
   const checkout = await CheckoutWebComponents({
     publicKey,
     environment: "sandbox",
-    locale: "en-GB",
+    locale: currentMarket.locale,
     paymentSession,
     appearance: {
       colorAction: "#8C9E6E",
@@ -165,12 +209,36 @@ async function createSessionFromForm(form) {
   }
 }
 
-document.getElementById("customer-form").addEventListener("submit", (e) => {
+function initialCountry() {
+  const urlCountry = new URLSearchParams(window.location.search).get("country");
+  if (urlCountry === "HK" || urlCountry === "NL") {
+    return urlCountry;
+  }
+  const select = document.querySelector('select[name="country"]');
+  return select?.value === "NL" ? "NL" : "HK";
+}
+
+const customerForm = document.getElementById("customer-form");
+const countrySelect = customerForm.querySelector('select[name="country"]');
+
+countrySelect.addEventListener("change", async () => {
+  const country = countrySelect.value;
+  resetPaymentSection();
+  try {
+    await loadProducts(country);
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+customerForm.addEventListener("submit", (e) => {
   e.preventDefault();
   createSessionFromForm(e.target);
 });
 
-loadProducts();
+const startCountry = initialCountry();
+countrySelect.value = startCountry;
+loadProducts(startCountry).catch(console.error);
 
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get("status") === "succeeded") {

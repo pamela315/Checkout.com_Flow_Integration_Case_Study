@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-HK">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -73,7 +73,7 @@
           </label>
           <label>
             Phone (optional)
-            <input name="phone" placeholder="+852 9123 4567" type="tel" autocomplete="tel" />
+            <input id="phone-input" name="phone" placeholder="+852 9123 4567" type="tel" autocomplete="tel" />
           </label>
           <label>
             Address line 1 (required)
@@ -108,7 +108,7 @@
         aria-labelledby="payment-heading"
       >
         <h2 id="payment-heading">Payment</h2>
-        <p class="payment-hint">Fill in your card details.</p>
+        <p class="payment-hint">Choose how to pay.</p>
         <div id="flow-container"></div>
         <p id="session-error" class="form-error" hidden></p>
       </section>
