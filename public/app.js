@@ -7,9 +7,9 @@ const publicKeyPromise = fetch("/api/config")
   })
   .then((config) => config.publicKey);
 
-const PHONE_PLACEHOLDERS = {
-  HK: "+852 9123 4567",
-  NL: "+31 6 12345678",
+const FIELD_PLACEHOLDERS = {
+  HK: { phone: "+852 9123 4567", postcode: "00000" },
+  NL: { phone: "+31 6 12345678", postcode: "1012 AB" },
 };
 
 let flowComponent = null;
@@ -84,11 +84,10 @@ function resetPaymentSection() {
   document.getElementById("flow-container").replaceChildren();
 }
 
-function updatePhonePlaceholder(country) {
-  const phoneInput = document.getElementById("phone-input");
-  if (phoneInput) {
-    phoneInput.placeholder = PHONE_PLACEHOLDERS[country] || PHONE_PLACEHOLDERS.HK;
-  }
+function updatePlaceholders(country) {
+  const placeholders = FIELD_PLACEHOLDERS[country] || FIELD_PLACEHOLDERS.HK;
+  document.querySelector('input[name="phone"]').placeholder = placeholders.phone;
+  document.querySelector('input[name="postcode"]').placeholder = placeholders.postcode;
 }
 
 /**
@@ -138,7 +137,7 @@ async function loadProducts(country) {
   }
 
   applyMarket(data);
-  updatePhonePlaceholder(data.country);
+  updatePlaceholders(data.country);
 
   const list = document.getElementById("product-list");
   const totalEl = document.getElementById("order-total");

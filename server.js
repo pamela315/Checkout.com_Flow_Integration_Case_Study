@@ -101,6 +101,7 @@ app.post("/create-payment-sessions", async (req, res) => {
     addressLine1,
     addressLine2,
     city,
+    postcode,
     country = "HK",
   } = req.body || {};
 
@@ -111,10 +112,16 @@ app.post("/create-payment-sessions", async (req, res) => {
     });
   }
 
-  if (!name?.trim() || !email?.trim() || !addressLine1?.trim() || !city?.trim()) {
+  if (
+    !name?.trim() ||
+    !email?.trim() ||
+    !addressLine1?.trim() ||
+    !city?.trim() ||
+    !postcode?.trim()
+  ) {
     return res.status(400).json({
       error: "invalid_request",
-      message: "Name, email, address, and city are required.",
+      message: "Name, email, address, city, and postcode are required.",
     });
   }
 
@@ -123,6 +130,13 @@ app.post("/create-payment-sessions", async (req, res) => {
   const totalAmount = orderTotal(products);
 
   const phoneDigits = (phone || "").replace(/\D/g, "");
+  const address = {
+    address_line1: addressLine1.trim(),
+    address_line2: addressLine2?.trim() || undefined,
+    city: city.trim(),
+    zip: postcode.trim(),
+    country: market.country,
+  };
 
   const sessionBody = {
     amount: totalAmount,
@@ -142,12 +156,7 @@ app.post("/create-payment-sessions", async (req, res) => {
       name: name.trim(),
     },
     shipping: {
-      address: {
-        address_line1: addressLine1.trim(),
-        address_line2: addressLine2?.trim() || undefined,
-        city: city.trim(),
-        country: market.country,
-      },
+      address,
       phone: phoneDigits
         ? {
             number: phoneDigits,
@@ -156,12 +165,7 @@ app.post("/create-payment-sessions", async (req, res) => {
         : undefined,
     },
     billing: {
-      address: {
-        address_line1: addressLine1.trim(),
-        address_line2: addressLine2?.trim() || undefined,
-        city: city.trim(),
-        country: market.country,
-      },
+      address,
       phone: phoneDigits
         ? {
             number: phoneDigits,
