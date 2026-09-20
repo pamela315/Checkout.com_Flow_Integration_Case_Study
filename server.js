@@ -226,6 +226,28 @@ app.get("/api/payments/:id", async (req, res) => {
     return res.status(request.status).send(payment);
   }
 
+  let responseCode = payment.response_code;
+  let responseSummary = payment.response_summary;
+
+  if (!responseCode && !responseSummary) {
+    const actionsRequest = await fetch(
+      `https://api.sandbox.checkout.com/payments/${id}/actions`,
+      {
+        headers: {
+          Authorization: `Bearer ${SECRET_KEY}`,
+        },
+      },
+    );
+    const actions = await actionsRequest.json();
+    if (actionsRequest.ok && Array.isArray(actions)) {
+      const action =
+        actions.find((item) => item.response_code || item.response_summary) ||
+        actions[0];
+      responseCode = action?.response_code;
+      responseSummary = action?.response_summary;
+    }
+  }
+
   res.json({
     id: payment.id,
     status: payment.status,
@@ -233,6 +255,8 @@ app.get("/api/payments/:id", async (req, res) => {
     amount: payment.amount,
     currency: payment.currency,
     reference: payment.reference,
+    response_code: responseCode,
+    response_summary: responseSummary,
   });
 });
 

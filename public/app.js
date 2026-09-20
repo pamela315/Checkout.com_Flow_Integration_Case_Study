@@ -19,10 +19,41 @@ let priceFormatter = new Intl.NumberFormat("en-HK", {
   currency: "HKD",
 });
 
+const FAILED_TOAST_PREFIX = "Payment Failure, please try again";
+
 function triggerToast(id) {
   const element = document.getElementById(id);
   element.classList.add("show");
   setTimeout(() => element.classList.remove("show"), 5000);
+}
+
+document.getElementById("failed-toast-close").addEventListener("click", () => {
+  document.getElementById("failedToast").classList.remove("show");
+});
+
+function showFailedToast(message) {
+  document.getElementById("failed-toast-message").textContent = message;
+  document.getElementById("failedToast").classList.add("show");
+}
+
+function failedPaymentDetails({ response_code: code, response_summary: summary }) {
+  return [code && `Error code ${code}`, summary].filter(Boolean).join(" — ");
+}
+
+async function showFailedPaymentToast(paymentId) {
+  showFailedToast(FAILED_TOAST_PREFIX);
+  if (!paymentId) return;
+
+  try {
+    const response = await fetch(`/api/payments/${paymentId}`);
+    const payment = await response.json();
+    const details = response.ok ? failedPaymentDetails(payment) : "";
+    if (details) {
+      showFailedToast(`${FAILED_TOAST_PREFIX}: ${details}`);
+    }
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function showError(el, message) {
@@ -245,5 +276,5 @@ if (urlParams.get("status") === "succeeded") {
   showPaymentSuccess(urlParams.get("cko-payment-id"));
 }
 if (urlParams.get("status") === "failed") {
-  triggerToast("failedToast");
+  showFailedPaymentToast(urlParams.get("cko-payment-id"));
 }

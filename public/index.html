@@ -10,8 +10,16 @@
     <div id="successToast" class="toast success" role="status">
       <span>Payment successful</span>
     </div>
-    <div id="failedToast" class="toast failed" role="status">
-      <span>Payment failed — please try again</span>
+    <div id="failedToast" class="toast failed" role="alert">
+      <span id="failed-toast-message">Payment Failure, please try again</span>
+      <button
+        type="button"
+        id="failed-toast-close"
+        class="toast__close"
+        aria-label="Close"
+      >
+        ×
+      </button>
     </div>
 
     <header class="site-header">
