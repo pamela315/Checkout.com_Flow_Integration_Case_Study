@@ -181,6 +181,13 @@ app.post("/create-payment-sessions", async (req, res) => {
       products: products.map((p) => p.id).join(","),
       market: market.country,
     },
+    "3ds": {
+      enabled: true,
+      challenge_indicator:
+        market.country === "NL"
+          ? "challenge_requested_mandate"
+          : "challenge_requested",
+    },
   };
 
   const request = await fetch(
