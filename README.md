@@ -68,11 +68,51 @@ checkout_page/
 | `GET` | `/api/products` | Product list and order total |
 | `GET` | `/api/config` | Public key for Flow |
 | `POST` | `/create-payment-sessions` | Creates a sandbox payment session from the customer form |
-| `GET` | `/api/payments/:id` | Fetches payment status after success (e.g. `pay_…`) |
+| `GET` | `/api/payments/:id` | Payment status plus `response_code` / `response_summary` (from payment actions when needed) |
 
 ## Testing payments
 
-Use [Checkout.com sandbox test cards](https://www.checkout.com/docs/testing/test-cards) and sandbox wallet flows. Successful payments show an on-page confirmation with payment ID and status; failures surface a toast when returning with `?status=failed`.
+Use [Checkout.com sandbox test cards](https://www.checkout.com/docs/developer-resources/testing/test-cards). Use any future expiry and any 3-digit CVV (4-digit for American Express). Never use real card numbers in sandbox.
+
+Successful payments show an on-page confirmation with payment ID and status. Declines return to `?status=failed` and the fail toast shows **Payment Failure, please try again**, then `Error code {response_code} — {response_summary}` when those fields are available.
+
+Sessions are created with 3DS enabled (`challenge_requested` for HK, `challenge_requested_mandate` for NL). A decline card can still go through 3DS first. NL’s mandate can force a challenge even on a frictionless test PAN.
+
+Apple Pay generally will not complete on `localhost` (HTTPS, domain verification, and Dashboard enablement are required).
+
+### Happy path
+
+| Card | Number | Expected |
+|------|--------|----------|
+| Visa credit | `4242424242424242` | `10000` Approved |
+
+### Issuer declines
+
+| Code | Meaning | Number |
+|------|---------|--------|
+| `20012` | Invalid transaction | `4024007103573027` |
+| `200R3` | Issuer stop payment (revocation) for all authorizations | `4567361325981788` |
+| `200N7` | Decline for CVV2 failure | `4734868958733862` |
+| `2005C` | Transaction not supported / blocked by issuer | `4276038578596818` |
+| `20020` | Default-card decline (`20020`) | `4916301720257093` |
+
+### 3DS2 frictionless
+
+| Result | Visa number |
+|--------|-------------|
+| Authentication successful | `4485040371536584` |
+| Not authenticated | `4539628347117863` |
+| Authentication rejected | `4275765574319271` |
+
+### 3DS2 challenge
+
+If the 3DS simulator appears, enter password **`Checkout1!`**.
+
+| Result | Number |
+|--------|--------|
+| Authentication successful | Mastercard `5385308360135181` |
+| Not authenticated | Visa `4243754271700719` |
+| Authentication rejected | Amex `375982239796002` |
 
 ## Security notes
 
