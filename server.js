@@ -22,7 +22,7 @@ const MARKETS = {
   HK: {
     country: "HK",
     currency: "HKD",
-    locale: "en-HK",
+    locale: "en-GB",
     phoneCountryCode: "+852",
     paymentMethods: ["card", "applepay", "googlepay"],
   },

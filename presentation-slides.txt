@@ -1,0 +1,164 @@
+Case Co. checkout — presentation slide plan
+Keep each slide sparse. Speak the detail; do not paste paragraphs onto slides.
+
+
+SLIDE 1 — Title
+Case Co. checkout
+Checkout.com Flow · Hong Kong & Netherlands
+GitHub: pamela315/Checkout_case_study
+
+
+SLIDE 2 — Agenda
+1. Brief → technical choices
+2. How the payment works
+3. Demo
+4. Sandbox error & 3DS testing
+5. What I would add for go-live
+
+
+SLIDE 3 — Merchant brief
+Selling iPhone cases in HK and NL
+Cards collected on the merchant page
+Must stay PCI compliant
+Most shoppers on iPhone → faster / wallet checkout
+
+
+SLIDE 4 — What I built
+On-page checkout with basket
+Flow for cards, Apple Pay, Google Pay
+HKD / EUR by country
+Sandbox payments end-to-end
+
+
+SLIDE 5 — Requirements → technology
+Cards on our site + PCI     →  Flow (hosted fields)
+iPhone one-touch            →  Apple Pay (+ Google Pay)
+HK and NL                   →  HKD / EUR, locale, country
+Must work in test           →  Payment Sessions + sandbox cards
+
+
+SLIDE 6 — Why Flow
+Card data never hits our server
+Secret key stays on the server
+Cards and wallets in one component
+HPP would leave the merchant page
+Frames would mean wiring wallets separately
+
+
+SLIDE 7 — Architecture
+[DIAGRAM]
+
+Browser (public key)
+  → POST /create-payment-sessions
+  → Payment Session (amount, currency, customer, 3DS)
+  → Flow mounts
+  → Pay
+       success → onPaymentCompleted
+       3DS / decline → success_url / failure_url
+
+
+SLIDE 8 — Currency (not a Flow setting)
+Country select → market
+HK: 31800 HKD    NL: 3600 EUR
+Set on the Payment Session as currency + amount
+Flow only receives the session
+
+
+SLIDE 9 — Demo · basket (HK)
+[SCREENSHOT]
+
+
+SLIDE 10 — Demo · contact & delivery
+[SCREENSHOT]
+Name, email, address, postcode → session
+
+
+SLIDE 11 — Demo · Flow payment
+[SCREENSHOT]
+Card / Apple Pay / Google Pay
+
+
+SLIDE 12 — Demo · success
+[SCREENSHOT]
+Payment ID + status
+
+
+SLIDE 13 — Demo · Netherlands
+[SCREENSHOT]
+EUR pricing · Flow locale nl-NL · postcode
+
+
+SLIDE 14 — Sandbox testing
+Checkout.com test cards
+Any future expiry · any 3-digit CVV (4 for Amex)
+Never use real cards
+3DS on: HK challenge_requested · NL challenge_requested_mandate
+
+
+SLIDE 15 — Happy path
+Visa  4242 4242 4242 4242
+→ 10000 Approved
+
+
+SLIDE 16 — Issuer declines
+Code     Meaning
+20012    Invalid transaction
+200R3    Stop payment (revocation) — all authorizations
+200N7    CVV2 failure
+2005C    Not supported / blocked by issuer
+20020    Default-card decline
+
+Toast: Payment Failure, please try again: Error code … — …
+
+
+SLIDE 17 — Decline toast
+[SCREENSHOT]
+e.g. Error code 20012 — Invalid Transaction
+After 3DS, code/summary often sit on the payment action
+
+
+SLIDE 18 — 3DS2 frictionless
+No ACS page
+Successful     4485040371536584
+Not authenticated     4539628347117863
+Rejected     4275765574319271
+
+NL mandate may still force a challenge
+
+
+SLIDE 19 — 3DS2 challenge
+[SCREENSHOT]
+Simulator password: Checkout1!
+Successful     Mastercard 5385308360135181
+Not authenticated     Visa 4243754271700719
+Rejected     Amex 375982239796002
+
+
+SLIDE 20 — Part 3 extras in this demo
+Name + email on the session
+Flow in nl-NL
+3DS required
+HKD and EUR
+
+
+SLIDE 21 — Not in the demo (say this on purpose)
+Webhooks — source of truth before fulfilment
+Refunds after capture
+iDEAL for NL (brief asked cards + iPhone wallet)
+Apple Pay needs HTTPS + domain verification (not localhost)
+
+
+SLIDE 22 — Close
+Flow + wallets because PCI and iPhone conversion
+Session owns amount, currency, 3DS, customer
+Next: webhooks, Apple Pay domain, iDEAL if they want NL conversion
+
+Questions
+
+
+SPEAKER NOTES (do not put on slides)
+- Demo the journey, do not scroll code unless asked.
+- Live: one success (4242) + one decline (20012). Rest is the table.
+- Fulfilment: UI callback is not enough; wait for webhook.
+- Apple Pay on localhost will not complete — expected.
+- Test cards: https://www.checkout.com/docs/developer-resources/testing/test-cards

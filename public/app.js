@@ -13,8 +13,8 @@ const FIELD_PLACEHOLDERS = {
 };
 
 let flowComponent = null;
-let currentMarket = { country: "HK", locale: "en-HK", currency: "HKD" };
-let priceFormatter = new Intl.NumberFormat("en-HK", {
+let currentMarket = { country: "HK", locale: "en-GB", currency: "HKD" };
+let priceFormatter = new Intl.NumberFormat("en-GB", {
   style: "currency",
   currency: "HKD",
 });
